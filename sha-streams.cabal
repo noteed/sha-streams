@@ -15,13 +15,20 @@ source-repository head
   type: git
   location: git://github.com/noteed/sha-streams.git
 
-executable sha-streams
-  hs-source-dirs:      bin
-  main-is:             sha-streams.hs
+library
   build-depends:       base == 4.*,
                        binary == 0.7.*,
                        bytestring == 0.9.*,
                        io-streams == 1.1.*,
+                       SHA == 1.6.*
+  exposed-modules:     System.IO.Streams.SHA
+  ghc-options:         -Wall
+
+executable sha-streams
+  hs-source-dirs:      bin
+  main-is:             sha-streams.hs
+  build-depends:       base == 4.*,
+                       io-streams == 1.1.*,
                        SHA == 1.6.*,
-                       unix == 2.5.*
+                       sha-streams
   ghc-options:         -Wall
