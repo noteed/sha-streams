@@ -1,0 +1,27 @@
+name:                sha-streams
+version:             0.0.0
+Cabal-Version:       >= 1.8
+synopsis:            SHA hashes for io-streams.
+description:         SHA hashes for io-streams.
+category:            System
+license:             BSD3
+license-file:        LICENSE
+author:              Vo Minh Thu
+maintainer:          thu@hypered.io
+build-type:          Simple
+homepage:            https://github.com/noteed/sha-streams
+
+source-repository head
+  type: git
+  location: git://github.com/noteed/sha-streams.git
+
+executable sha-streams
+  hs-source-dirs:      bin
+  main-is:             sha-streams.hs
+  build-depends:       base == 4.*,
+                       binary == 0.7.*,
+                       bytestring == 0.9.*,
+                       io-streams == 1.1.*,
+                       SHA == 1.6.*,
+                       unix == 2.5.*
+  ghc-options:         -Wall
