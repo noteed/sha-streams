@@ -1,6 +1,9 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 module System.IO.Streams.SHA where
 
+import Control.Exception (Exception, throwIO)
 import Data.Binary.Get
+import Data.Typeable (Typeable)
 import System.IO.Streams.Internal (InputStream (..))
 import qualified System.IO.Streams as S
 
@@ -25,6 +28,21 @@ sha384Input = shaInput sha384Incremental completeSha384Incremental
 sha512Input :: InputStream ByteString -> IO (InputStream ByteString, IO (Digest SHA512State))
 sha512Input = shaInput sha512Incremental completeSha512Incremental
 
+checkedSha1Input :: Digest SHA1State -> InputStream ByteString -> IO (InputStream ByteString)
+checkedSha1Input = checkedShaInput sha1Incremental completeSha1Incremental
+
+checkedSha224Input :: Digest SHA256State -> InputStream ByteString -> IO (InputStream ByteString)
+checkedSha224Input = checkedShaInput sha224Incremental completeSha224Incremental
+
+checkedSha256Input :: Digest SHA256State -> InputStream ByteString -> IO (InputStream ByteString)
+checkedSha256Input = checkedShaInput sha256Incremental completeSha256Incremental
+
+checkedSha384Input :: Digest SHA512State -> InputStream ByteString -> IO (InputStream ByteString)
+checkedSha384Input = checkedShaInput sha384Incremental completeSha384Incremental
+
+checkedSha512Input :: Digest SHA512State -> InputStream ByteString -> IO (InputStream ByteString)
+checkedSha512Input = checkedShaInput sha512Incremental completeSha512Incremental
+
 -- | Inspired by `S.countInput`. The returned IO action can be run only
 -- when the input stream is exhausted, otherwise an error occurs.
 shaInput :: Decoder a -> (Decoder a -> Int -> Digest a)
@@ -46,9 +64,43 @@ shaInput increment end is = do
   complete decoder c = return $! end decoder c
   modify bs decoder c = (pushChunk decoder bs, c + (fromIntegral $ C.length bs))
 
+-- | This returns an input stream exactly as the one being wrapped, but throws
+-- an error if the computed SHA hash does not match the one given.
+checkedShaInput :: Decoder a -> (Decoder a -> Int -> Digest a)
+  -> Digest a -> InputStream ByteString -> IO (InputStream ByteString)
+checkedShaInput increment end digest is = do
+  ref <- newIORef (increment, 0)
+  is' <- S.makeInputStream $ prod ref
+  return $! is'
+
+  where
+
+  prod ref = do
+    mbs <- S.read is
+    maybe
+      (do r <- readIORef ref
+          digest' <- uncurry complete r
+          if digest == digest'
+            then return Nothing
+            else throwIO UnmatchedSHAException)
+      (\bs -> (modifyRef ref (uncurry $ modify bs)) >> (return $! Just bs))
+      mbs
+
+  complete decoder c = return $! end decoder c
+  modify bs decoder c = (pushChunk decoder bs, c + (fromIntegral $ C.length bs))
+
 -- | Taken from System.IO.Streams.ByteString.
 {-# INLINE modifyRef #-}
 modifyRef :: IORef a -> (a -> a) -> IO ()
 modifyRef ref f = do
     x <- readIORef ref
     writeIORef ref $! f x
+
+-- | Exception raised by `checkedShaInput`.
+data UnmatchedSHAException = UnmatchedSHAException
+  deriving (Typeable)
+
+instance Show UnmatchedSHAException where
+    show _ = "Unmatched SHA exception."
+
+instance Exception UnmatchedSHAException
