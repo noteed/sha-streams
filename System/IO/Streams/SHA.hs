@@ -29,19 +29,34 @@ sha512Input :: InputStream ByteString -> IO (InputStream ByteString, IO (Digest 
 sha512Input = shaInput sha512Incremental completeSha512Incremental
 
 checkedSha1Input :: Digest SHA1State -> InputStream ByteString -> IO (InputStream ByteString)
-checkedSha1Input = checkedShaInput sha1Incremental completeSha1Incremental
+checkedSha1Input = checkedShaInput sha1Incremental completeSha1Incremental . showDigest
 
 checkedSha224Input :: Digest SHA256State -> InputStream ByteString -> IO (InputStream ByteString)
-checkedSha224Input = checkedShaInput sha224Incremental completeSha224Incremental
+checkedSha224Input = checkedShaInput sha224Incremental completeSha224Incremental . showDigest
 
 checkedSha256Input :: Digest SHA256State -> InputStream ByteString -> IO (InputStream ByteString)
-checkedSha256Input = checkedShaInput sha256Incremental completeSha256Incremental
+checkedSha256Input = checkedShaInput sha256Incremental completeSha256Incremental . showDigest
 
 checkedSha384Input :: Digest SHA512State -> InputStream ByteString -> IO (InputStream ByteString)
-checkedSha384Input = checkedShaInput sha384Incremental completeSha384Incremental
+checkedSha384Input = checkedShaInput sha384Incremental completeSha384Incremental . showDigest
 
 checkedSha512Input :: Digest SHA512State -> InputStream ByteString -> IO (InputStream ByteString)
-checkedSha512Input = checkedShaInput sha512Incremental completeSha512Incremental
+checkedSha512Input = checkedShaInput sha512Incremental completeSha512Incremental . showDigest
+
+checkedSha1Input' :: String -> InputStream ByteString -> IO (InputStream ByteString)
+checkedSha1Input' = checkedShaInput sha1Incremental completeSha1Incremental
+
+checkedSha224Input' :: String -> InputStream ByteString -> IO (InputStream ByteString)
+checkedSha224Input' = checkedShaInput sha224Incremental completeSha224Incremental
+
+checkedSha256Input' :: String -> InputStream ByteString -> IO (InputStream ByteString)
+checkedSha256Input' = checkedShaInput sha256Incremental completeSha256Incremental
+
+checkedSha384Input' :: String -> InputStream ByteString -> IO (InputStream ByteString)
+checkedSha384Input' = checkedShaInput sha384Incremental completeSha384Incremental
+
+checkedSha512Input' :: String -> InputStream ByteString -> IO (InputStream ByteString)
+checkedSha512Input' = checkedShaInput sha512Incremental completeSha512Incremental
 
 -- | Inspired by `S.countInput`. The returned IO action can be run only
 -- when the input stream is exhausted, otherwise an error occurs.
@@ -67,7 +82,7 @@ shaInput increment end is = do
 -- | This returns an input stream exactly as the one being wrapped, but throws
 -- an error if the computed SHA hash does not match the one given.
 checkedShaInput :: Decoder a -> (Decoder a -> Int -> Digest a)
-  -> Digest a -> InputStream ByteString -> IO (InputStream ByteString)
+  -> String -> InputStream ByteString -> IO (InputStream ByteString)
 checkedShaInput increment end digest is = do
   ref <- newIORef (increment, 0)
   is' <- S.makeInputStream $ prod ref
@@ -80,7 +95,7 @@ checkedShaInput increment end digest is = do
     maybe
       (do r <- readIORef ref
           digest' <- uncurry complete r
-          if digest == digest'
+          if digest == showDigest digest'
             then return Nothing
             else throwIO UnmatchedSHAException)
       (\bs -> (modifyRef ref (uncurry $ modify bs)) >> (return $! Just bs))
