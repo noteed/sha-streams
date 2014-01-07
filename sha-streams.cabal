@@ -1,5 +1,5 @@
 name:                sha-streams
-version:             0.0.0
+version:             0.1.0
 Cabal-Version:       >= 1.8
 synopsis:            SHA hashes for io-streams.
 description:         SHA hashes for io-streams.
@@ -20,7 +20,7 @@ library
                        binary == 0.7.*,
                        bytestring == 0.9.*,
                        io-streams == 1.1.*,
-                       SHA == 1.6.*
+                       SHA >= 1.6.3
   exposed-modules:     System.IO.Streams.SHA
   ghc-options:         -Wall
 
@@ -29,6 +29,6 @@ executable sha-streams
   main-is:             sha-streams.hs
   build-depends:       base == 4.*,
                        io-streams == 1.1.*,
-                       SHA == 1.6.*,
+                       SHA >= 1.6.3,
                        sha-streams
   ghc-options:         -Wall
