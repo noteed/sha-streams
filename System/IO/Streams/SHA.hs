@@ -58,14 +58,20 @@ checkedSha384Input' = checkedShaInput sha384Incremental completeSha384Incrementa
 checkedSha512Input' :: String -> InputStream ByteString -> IO (InputStream ByteString)
 checkedSha512Input' = checkedShaInput sha512Incremental completeSha512Incremental
 
+-- | Strict pairs.
+data Pair a b = Pair !a !b
+
+uncurry' :: (a -> b -> c) -> Pair a b -> c
+uncurry' f (Pair a b) = f a b
+
 -- | Inspired by `S.countInput`. The returned IO action can be run only
 -- when the input stream is exhausted, otherwise an error occurs.
 shaInput :: Decoder a -> (Decoder a -> Int -> Digest a)
   -> InputStream ByteString -> IO (InputStream ByteString, IO (Digest a))
 shaInput increment end is = do
-  ref <- newIORef (increment, 0)
+  ref <- newIORef $ Pair increment 0
   is' <- S.makeInputStream $ prod ref
-  return $! (is', readIORef ref >>= uncurry complete)
+  return $! (is', readIORef ref >>= uncurry' complete)
 
   where
 
@@ -73,18 +79,18 @@ shaInput increment end is = do
     mbs <- S.read is
     maybe
       (return Nothing)
-      (\bs -> (modifyRef ref (uncurry $ modify bs)) >> (return $! Just bs))
+      (\bs -> (modifyRef ref (uncurry' $ modify bs)) >> (return $! Just bs))
       mbs
 
   complete decoder c = return $! end decoder c
-  modify bs decoder c = (pushChunk decoder bs, c + (fromIntegral $ C.length bs))
+  modify bs decoder c = Pair (pushChunk decoder bs) (c + (fromIntegral $ C.length bs))
 
 -- | This returns an input stream exactly as the one being wrapped, but throws
 -- an error if the computed SHA hash does not match the one given.
 checkedShaInput :: Decoder a -> (Decoder a -> Int -> Digest a)
   -> String -> InputStream ByteString -> IO (InputStream ByteString)
 checkedShaInput increment end digest is = do
-  ref <- newIORef (increment, 0)
+  ref <- newIORef $ Pair increment 0
   is' <- S.makeInputStream $ prod ref
   return $! is'
 
@@ -94,15 +100,15 @@ checkedShaInput increment end digest is = do
     mbs <- S.read is
     maybe
       (do r <- readIORef ref
-          digest' <- uncurry complete r
+          digest' <- uncurry' complete r
           if digest == showDigest digest'
             then return Nothing
             else throwIO UnmatchedSHAException)
-      (\bs -> (modifyRef ref (uncurry $ modify bs)) >> (return $! Just bs))
+      (\bs -> (modifyRef ref (uncurry' $ modify bs)) >> (return $! Just bs))
       mbs
 
   complete decoder c = return $! end decoder c
-  modify bs decoder c = (pushChunk decoder bs, c + (fromIntegral $ C.length bs))
+  modify bs decoder c = Pair (pushChunk decoder bs) (c + (fromIntegral $ C.length bs))
 
 -- | Taken from System.IO.Streams.ByteString.
 {-# INLINE modifyRef #-}
