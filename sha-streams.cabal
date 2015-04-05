@@ -3,7 +3,7 @@ version:             0.1.2
 Cabal-Version:       >= 1.8
 synopsis:            SHA hashes for io-streams.
 description:         SHA hashes for io-streams.
-category:            System
+category:            System, IO-Streams
 license:             BSD3
 license-file:        LICENSE
 author:              Vo Minh Thu
