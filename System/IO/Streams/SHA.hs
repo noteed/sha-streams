@@ -68,8 +68,17 @@ uncurry' f (Pair a b) = f a b
 -- when the input stream is exhausted, otherwise an error occurs.
 shaInput :: Decoder a -> (Decoder a -> Int -> Digest a)
   -> InputStream ByteString -> IO (InputStream ByteString, IO (Digest a))
-shaInput increment end is = do
-  ref <- newIORef $ Pair increment 0
+shaInput increment end is = shaInputWithPrefix increment end C.empty is
+
+-- | Inspired by `S.countInput`. The returned IO action can be run only
+-- when the input stream is exhausted, otherwise an error occurs.
+shaInputWithPrefix :: Decoder a -> (Decoder a -> Int -> Digest a)
+  -> ByteString
+  -> InputStream ByteString -> IO (InputStream ByteString, IO (Digest a))
+shaInputWithPrefix increment end prefix is = do
+  ref <- newIORef $ Pair
+    (pushChunk increment prefix)
+    (fromIntegral $ C.length prefix)
   is' <- S.makeInputStream $ prod ref
   return $! (is', readIORef ref >>= uncurry' complete)
 
@@ -90,7 +99,16 @@ shaInput increment end is = do
 checkedShaInput :: Decoder a -> (Decoder a -> Int -> Digest a)
   -> String -> InputStream ByteString -> IO (InputStream ByteString)
 checkedShaInput increment end digest is = do
-  ref <- newIORef $ Pair increment 0
+  checkedShaInputWithPrefix increment end digest C.empty is
+
+-- | This returns an input stream exactly as the one being wrapped, but throws
+-- an error if the computed SHA hash does not match the one given.
+checkedShaInputWithPrefix :: Decoder a -> (Decoder a -> Int -> Digest a)
+  -> String -> ByteString -> InputStream ByteString -> IO (InputStream ByteString)
+checkedShaInputWithPrefix increment end digest prefix is = do
+  ref <- newIORef $ Pair
+    (pushChunk increment prefix)
+    (fromIntegral $ C.length prefix)
   is' <- S.makeInputStream $ prod ref
   return $! is'
 
